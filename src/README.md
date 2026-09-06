@@ -40,7 +40,7 @@ Robotics_ws/
 
 El repositorio local se encuentra en ~/robotics_ws.
 
-Los programas se ejecutan directamente con Python, por lo que esta estructura no requiere colcon build. Es necesario cargar el entorno de ROS 2 en cada terminal.
+Los programas se ejecutan directamente con Python, por lo que esta estructura no requiere colcon build. Es necesario cargar el entorno de ROS 2 en cada terminal en caso de no haberlo hecho antes en el .bashrc
 
 ### Terminal 1: publicador
 
