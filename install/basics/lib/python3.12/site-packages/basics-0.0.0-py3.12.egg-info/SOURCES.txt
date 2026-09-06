@@ -1,0 +1,16 @@
+package.xml
+setup.cfg
+setup.py
+../../build/basics/basics.egg-info/PKG-INFO
+../../build/basics/basics.egg-info/SOURCES.txt
+../../build/basics/basics.egg-info/dependency_links.txt
+../../build/basics/basics.egg-info/entry_points.txt
+../../build/basics/basics.egg-info/requires.txt
+../../build/basics/basics.egg-info/top_level.txt
+../../build/basics/basics.egg-info/zip-safe
+basics/__init__.py
+basics/velocity_publisher.py
+resource/basics
+test/test_copyright.py
+test/test_flake8.py
+test/test_pep257.py

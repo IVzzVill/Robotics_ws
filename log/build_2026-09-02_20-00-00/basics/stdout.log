@@ -1,0 +1,19 @@
+running egg_info
+writing ../../build/basics/basics.egg-info/PKG-INFO
+writing dependency_links to ../../build/basics/basics.egg-info/dependency_links.txt
+writing entry points to ../../build/basics/basics.egg-info/entry_points.txt
+writing requirements to ../../build/basics/basics.egg-info/requires.txt
+writing top-level names to ../../build/basics/basics.egg-info/top_level.txt
+reading manifest file '../../build/basics/basics.egg-info/SOURCES.txt'
+writing manifest file '../../build/basics/basics.egg-info/SOURCES.txt'
+running build
+running build_py
+running install
+running install_lib
+running install_data
+running install_egg_info
+removing '/home/zadrac/robotics_ws/install/basics/lib/python3.12/site-packages/basics-0.0.0-py3.12.egg-info' (and everything under it)
+Copying ../../build/basics/basics.egg-info to /home/zadrac/robotics_ws/install/basics/lib/python3.12/site-packages/basics-0.0.0-py3.12.egg-info
+running install_scripts
+Installing velocity_publisher script to /home/zadrac/robotics_ws/install/basics/lib/basics
+writing list of installed files to '/home/zadrac/robotics_ws/build/basics/install.log'

@@ -1,0 +1,2 @@
+[console_scripts]
+velocity_publisher = basics.velocity_publisher:main
