@@ -148,3 +148,181 @@ El desarrollo se organizó en tres etapas:
 ## Evidencia en video
 
 [Ver video de la práctica](https://drive.google.com/file/d/1HbDn0eetMj2WAF0Cv_EMog6rGpy6UaAj/view?usp=sharing)
+
+
+---
+
+# Actividad 2: Control de velocidad de una tortuga
+
+## Descripción
+
+En esta actividad se realizaron copias del publicador y del suscriptor de la primera práctica para controlar una tortuga en turtlesim.
+
+La velocidad translacional comienza en 0.0 y aumenta 0.1 cada medio segundo hasta publicar 1.2. En la siguiente publicación se envía 0.0 y se mantiene la tortuga detenida.
+
+## Modificaciones realizadas
+
+Se crearon los archivos velocity_turtle_pub.py y velocity_turtle_subs.py a partir de los programas originales.
+
+Se cambió el mensaje Float32 por geometry_msgs/msg/Twist y el tópico /velocity por /turtle1/cmd_vel, que recibe las órdenes de movimiento de turtlesim.
+
+En el publicador se utiliza msg.linear.x para asignar la velocidad translacional y se mantiene msg.angular.z en cero para avanzar sin girar.
+
+También se agregó una variable llamada detenida para evitar que el incremento vuelva a comenzar después de llegar a 1.2.
+
+En el suscriptor se cambió la lectura de msg.data por msg.linear.x para obtener y mostrar la velocidad enviada.
+
+## Funcionamiento
+
+El nodo velocity_turtle_pub publica un mensaje Twist cada 0.5 segundos en /turtle1/cmd_vel.
+
+La secuencia enviada es 0.0, 0.1, 0.2 y así sucesivamente hasta 1.2. Medio segundo después de publicar 1.2, envía 0.0 y continúa enviando cero.
+
+El nodo velocity_turtle_subs escucha el mismo tópico. Cada mensaje ejecuta velocity_callback, que obtiene linear.x y muestra su valor con un decimal.
+
+Turtlesim también está suscrito a este tópico y utiliza los mensajes para mover la tortuga. Por eso hay un publicador y dos suscriptores cuando están activos únicamente estos tres programas.
+
+## Configuración del paquete local
+
+Para compilar y ejecutar se utilizó el paquete basics dentro de ~/robotics_ws/src/basics.
+
+Los scripts se colocaron en src/basics/basics y se agregaron estas entradas en la sección console_scripts de setup.py:
+
+```python
+'velocity_turtle_pub = basics.velocity_turtle_pub:main',
+'velocity_turtle_subs = basics.velocity_turtle_subs:main',
+```
+
+En package.xml se agregó la dependencia del mensaje utilizado:
+
+```xml
+<depend>geometry_msgs</depend>
+```
+
+El repositorio de entrega conserva los cinco archivos solicitados directamente en src. El paquete basics utilizado para colcon está en el entorno local y no está incluido en esta versión del repositorio.
+
+Por ello, los comandos de colcon y ros2 run que se muestran a continuación requieren tener preparado ese paquete local. Los archivos entregados también pueden ejecutarse directamente con python3 después de cargar ROS 2.
+
+## Compilación
+
+Desde la carpeta del workspace:
+
+```bash
+cd ~/robotics_ws
+source /opt/ros/jazzy/setup.bash
+colcon build --packages-select basics
+```
+
+## Ejecución
+
+Se inicia primero el simulador, después el suscriptor y al final el publicador para observar la secuencia completa.
+
+### Terminal 1: simulador
+
+```bash
+source /opt/ros/jazzy/setup.bash
+ros2 run turtlesim turtlesim_node
+```
+
+### Terminal 2: suscriptor
+
+```bash
+cd ~/robotics_ws
+source /opt/ros/jazzy/setup.bash
+source install/setup.bash
+ros2 run basics velocity_turtle_subs
+```
+
+### Terminal 3: publicador
+
+```bash
+cd ~/robotics_ws
+source /opt/ros/jazzy/setup.bash
+source install/setup.bash
+ros2 run basics velocity_turtle_pub
+```
+
+Los tres programas permanecen activos simultáneamente.
+
+### Ejecución directa de los archivos entregados
+
+Con turtlesim abierto, también se pueden ejecutar los scripts en dos terminales diferentes desde la raíz del repositorio.
+
+Suscriptor:
+
+```bash
+source /opt/ros/jazzy/setup.bash
+python3 src/velocity_turtle_subs.py
+```
+
+Publicador:
+
+```bash
+source /opt/ros/jazzy/setup.bash
+python3 src/velocity_turtle_pub.py
+```
+
+## Comprobación
+
+En una cuarta terminal se carga ROS 2:
+
+```bash
+source /opt/ros/jazzy/setup.bash
+```
+
+Se revisan los nodos activos y sus conexiones:
+
+```bash
+ros2 node list
+ros2 node info /velocity_turtle_pub
+ros2 node info /velocity_turtle_subs
+```
+
+Se revisa el tópico y el contenido de los mensajes:
+
+```bash
+ros2 topic info /turtle1/cmd_vel
+ros2 topic echo /turtle1/cmd_vel
+```
+
+El comando echo se detiene con Ctrl+C. Mientras está activo agrega otra suscripción al tópico.
+
+Se abre el grafo con:
+
+```bash
+ros2 run rqt_graph rqt_graph
+```
+
+El grafo muestra al publicador conectado a /turtle1/cmd_vel y al tópico conectado con turtlesim y velocity_turtle_subs.
+
+Durante la prueba se observó el recorrido recto de la tortuga y los mensajes de velocidad en las terminales. Al finalizar el incremento, ambos nodos mostraron 0.0 y la tortuga permaneció detenida.
+
+## Problemas y soluciones
+
+Al subir el primer commit de esta actividad, Git rechazó el push porque había cambios en GitHub que no estaban en la copia local.
+
+Se integraron esos cambios con:
+
+```bash
+git pull --rebase origin main
+```
+
+Después se repitió git push origin main y la subida terminó correctamente.
+
+Para mantener la estructura solicitada en GitHub y poder usar colcon localmente, se conservaron los archivos del paquete basics en la computadora y se prepararon para los commits únicamente los scripts solicitados.
+
+## Evidencia en video de la actividad 2
+
+[Ver video del control de la tortuga](https://drive.google.com/file/d/1M73oRtSIhc--LPFykLb1yMAco8UZOEuU/view?usp=sharing)
+
+## Estructura de entrega después de la actividad 2
+
+```text
+Robotics_ws/
+└── src/
+    ├── README.md
+    ├── velocity_publisher.py
+    ├── velocity_subscriber.py
+    ├── velocity_turtle_pub.py
+    └── velocity_turtle_subs.py
+```
