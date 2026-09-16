@@ -467,3 +467,183 @@ Después se agregaron comentarios a los archivos. Se comparó la estructura del 
 ## Evidencia del ejemplo del LED
 
 [Ver video del LED controlado con ROS 2](https://drive.google.com/file/d/1F7s_RSn5VcQd6ww2n6IhPIkxh7u9KqnB/view?usp=drive_link)
+
+
+---
+
+# Ejemplo del potenciómetro con ESP32 y ROS 2
+
+## Descripción
+
+En este ejemplo se lee un potenciómetro con la ESP32 y se envían sus lecturas a ROS 2 mediante comunicación serial.
+
+Se utilizan dos nodos: uno recibe las lecturas de la placa y las publica, mientras el otro recibe los mensajes y muestra los valores en la terminal.
+
+## Funcionamiento de los programas
+
+### ADC_Pot.ino
+
+Se ejecuta en la ESP32 y lee la entrada analógica del GPIO 15 mediante analogRead.
+
+Envía cada lectura por serial a 115200 baudios, seguida de un salto de línea. Después espera 100 milisegundos antes de repetir el proceso.
+
+### analog_serial_pub.py
+
+Crea el nodo analog_serial_pub y abre /dev/ttyUSB0 a 115200 baudios.
+
+Un temporizador revisa el puerto cada 0.01 segundos. Cuando hay datos disponibles, lee una línea y comprueba que contenga dígitos.
+
+Convierte la lectura a entero y la publica en el campo data de un mensaje std_msgs/msg/Int32 en el tópico /analog.
+
+La revisión cada 0.01 segundos no significa que se publiquen 100 lecturas por segundo, porque la publicación depende de los datos enviados por la ESP32.
+
+### analog_subs.py
+
+Crea el nodo analog_subscriber y se suscribe a /analog.
+
+Cuando recibe un mensaje, ejecuta analog_callback, obtiene msg.data y muestra la lectura con la etiqueta ADC.
+
+Los valores mostrados son lecturas del convertidor analógico a digital, no voltajes calculados.
+
+### serial_pot.py
+
+Lee y muestra directamente las líneas enviadas por la ESP32 mediante Python, sin utilizar ROS 2.
+
+Utiliza el mismo puerto serial, por lo que no debe ejecutarse simultáneamente con analog_serial_pub ni con el monitor serial de Arduino.
+
+## Preparación
+
+Se carga el archivo ADC_Pot.ino en la ESP32 desde Arduino IDE.
+
+La señal del potenciómetro se conecta al GPIO 15 y sus extremos a 3.3 V y GND.
+
+Antes de iniciar los nodos se cierra el monitor serial y cualquier programa que esté utilizando el puerto.
+
+## Compilación
+
+```bash
+cd ~/robotics_ws
+source /opt/ros/jazzy/setup.bash
+colcon build --packages-select basics
+```
+
+## Ejecución
+
+### Terminal 1: suscriptor
+
+```bash
+cd ~/robotics_ws
+source /opt/ros/jazzy/setup.bash
+source install/setup.bash
+ros2 run basics analog_subs
+```
+
+El nombre del ejecutable es analog_subs y el nombre del nodo es analog_subscriber.
+
+### Terminal 2: publicador serial
+
+```bash
+cd ~/robotics_ws
+source /opt/ros/jazzy/setup.bash
+source install/setup.bash
+ros2 run basics analog_serial_pub
+```
+
+Los dos nodos permanecen activos mientras se gira el potenciómetro.
+
+## Comprobación
+
+En una tercera terminal:
+
+```bash
+source /opt/ros/jazzy/setup.bash
+ros2 node list
+ros2 node info /analog_serial_pub
+ros2 node info /analog_subscriber
+ros2 topic info /analog
+```
+
+El tópico /analog utiliza std_msgs/msg/Int32. Con únicamente los dos nodos del ejemplo activos, tiene un publicador y un suscriptor.
+
+Para observar las lecturas:
+
+```bash
+ros2 topic echo /analog
+```
+
+Los valores del campo data cambian al girar el potenciómetro. Se detiene echo con Ctrl+C antes de continuar.
+
+Para abrir el grafo:
+
+```bash
+ros2 run rqt_graph rqt_graph
+```
+
+La conexión observada es:
+
+```text
+/analog_serial_pub → /analog → /analog_subscriber
+```
+
+La ESP32 no aparece como nodo ROS 2 porque se comunica con el publicador mediante el puerto serial.
+
+## Resultado y observaciones
+
+Primero se comprobó en el monitor serial de Arduino que los números cambiaban al girar el potenciómetro.
+
+Después se cerró el monitor y se ejecutaron los nodos. Las lecturas aparecieron en el suscriptor y en ros2 topic echo. El grafo permitió comprobar la conexión entre ambos nodos.
+
+No fue necesario modificar la lógica de los programas durante esta prueba. Se agregaron comentarios por sección y se compararon los archivos con sus versiones originales para comprobar que se conservó el código.
+
+## Evidencia del ejemplo del potenciómetro
+
+[Ver video del potenciómetro con ROS 2](https://drive.google.com/file/d/1L5_tvLl4-Yc6a2bpFejC-KEC-WTcxuf0/view?usp=drive_link)
+
+## Control de versiones de los ejemplos de ESP32
+
+El desarrollo se organizó en cinco commits:
+
+1. Archivos y ejemplos vistos en clase
+2. Comprobación y comentarios del ejemplo del LED
+3. Documentación y video del LED
+4. Comprobación y comentarios del ejemplo del potenciómetro
+5. Documentación y video del potenciómetro
+
+## Estructura actual de la entrega
+
+Los archivos de configuración se conservan para permitir la compilación del paquete basics con colcon.
+
+```text
+src/
+├── README.md
+├── basics/
+│   ├── basics/
+│   │   ├── __init__.py
+│   │   ├── velocity_publisher.py
+│   │   ├── velocity_subscriber.py
+│   │   ├── velocity_turtle_pub.py
+│   │   ├── velocity_turtle_subs.py
+│   │   ├── led_blink.py
+│   │   ├── serial_bridge.py
+│   │   ├── analog_serial_pub.py
+│   │   └── analog_subs.py
+│   ├── package.xml
+│   ├── setup.py
+│   ├── setup.cfg
+│   ├── resource/
+│   │   └── basics
+│   └── test/
+│       ├── test_copyright.py
+│       ├── test_flake8.py
+│       └── test_pep257.py
+└── colmibot_firmware/
+    └── esp32_basics/
+        ├── ADC_Pot/
+        │   └── ADC_Pot.ino
+        ├── LED_Serial/
+        │   └── LED_Serial.ino
+        ├── serial_led.py
+        └── serial_pot.py
+```
+
+Esta estructura reemplaza las ubicaciones de las entregas anteriores. Sus explicaciones y enlaces de evidencia se conservan como registro de esas actividades.
