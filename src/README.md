@@ -326,3 +326,144 @@ Robotics_ws/
     ├── velocity_turtle_pub.py
     └── velocity_turtle_subs.py
 ```
+
+
+---
+
+# Actividad 3: Control del LED de la ESP32
+
+## Descripción
+
+En este ejemplo se utiliza ROS 2 para encender y apagar el LED de una ESP32 mediante comunicación serial.
+
+Se comentaron los programas de clase por secciones, conservando su funcionamiento.
+
+## Funcionamiento de los programas
+
+### led_blink.py
+
+Crea el nodo led_blink y publica mensajes std_msgs/msg/Int32 en el tópico /led_command.
+
+El estado comienza en 1 y un temporizador lo alterna entre 1 y 0 cada segundo. Estos valores representan las órdenes de encender y apagar el LED.
+
+### serial_bridge.py
+
+Crea el nodo serial_bridge y se suscribe a /led_command.
+
+Cuando recibe un 1, envía el carácter 1 seguido de un salto de línea por el puerto serial. Cuando recibe un 0, envía el carácter 0.
+
+La conexión utiliza /dev/ttyUSB0 a 115200 baudios.
+
+### LED_Serial.ino
+
+Se ejecuta en la ESP32 y configura el pin 2 como salida.
+
+Lee los caracteres recibidos por serial. Si recibe '1', coloca el pin en HIGH para encender el LED. Si recibe '0', lo coloca en LOW para apagarlo.
+
+### serial_led.py
+
+Permite controlar el LED manualmente desde Python, sin utilizar ROS 2.
+
+Solicita una entrada por teclado: 1 para encender, 0 para apagar y q para salir. Utiliza el mismo puerto y velocidad de comunicación.
+
+Este programa no debe ejecutarse al mismo tiempo que serial_bridge porque ambos necesitan acceder al puerto de la ESP32.
+
+## Organización actual
+
+Los programas ROS 2 se encuentran dentro de src/basics/basics y la configuración del paquete está en src/basics.
+
+El firmware y los programas de comunicación serial directa están en src/colmibot_firmware/esp32_basics.
+
+Los scripts de velocidad de las actividades anteriores también se encuentran ahora dentro de src/basics/basics. Sus secciones anteriores conservan los comandos utilizados en esas entregas.
+
+## Preparación
+
+Se carga LED_Serial.ino en la ESP32 desde Arduino IDE y se cierra el monitor serial antes de ejecutar el puente.
+
+Se comprueba el puerto disponible con:
+
+```bash
+ls -l /dev/ttyUSB* /dev/ttyACM* 2>/dev/null
+```
+
+En esta práctica la placa apareció como /dev/ttyUSB0.
+
+## Compilación
+
+```bash
+cd ~/robotics_ws
+source /opt/ros/jazzy/setup.bash
+colcon build --packages-select basics
+```
+
+## Ejecución con ROS 2
+
+### Terminal 1: puente serial
+
+```bash
+cd ~/robotics_ws
+source /opt/ros/jazzy/setup.bash
+source install/setup.bash
+ros2 run basics serial_bridge
+```
+
+### Terminal 2: publicador
+
+```bash
+cd ~/robotics_ws
+source /opt/ros/jazzy/setup.bash
+source install/setup.bash
+ros2 run basics led_blink
+```
+
+Los dos nodos permanecen ejecutándose simultáneamente.
+
+## Comprobación
+
+En una tercera terminal:
+
+```bash
+source /opt/ros/jazzy/setup.bash
+ros2 node list
+ros2 node info /led_blink
+ros2 node info /serial_bridge
+ros2 topic info /led_command
+```
+
+Se comprobó que led_blink publica en /led_command y serial_bridge está suscrito al mismo tópico.
+
+El tipo de mensaje es std_msgs/msg/Int32. Sin herramientas adicionales escuchando, hay un publicador y un suscriptor.
+
+Para observar los mensajes:
+
+```bash
+ros2 topic echo /led_command
+```
+
+Se observaron valores alternados de 1 y 0. Este comando se detiene con Ctrl+C y agrega una suscripción mientras está activo.
+
+Para mostrar el grafo:
+
+```bash
+ros2 run rqt_graph rqt_graph
+```
+
+La conexión observada fue:
+
+```text
+/led_blink → /led_command → /serial_bridge
+```
+
+La ESP32 no aparece como nodo ROS 2 porque recibe las órdenes mediante la conexión serial.
+
+## Resultado y observaciones
+
+El paquete compiló correctamente. El publicador alternó los estados, el puente mostró las órdenes enviadas y el LED de la ESP32 se encendió y apagó.
+
+Al abrir rqt_graph apareció un aviso QSocketNotifier, pero la ventana abrió y permitió comprobar las conexiones.
+
+Después se agregaron comentarios a los archivos. Se comparó la estructura del código Python con la versión original para confirmar que se conservó su lógica. En el firmware se revisó que los cambios fueran únicamente comentarios y formato.
+
+## Evidencia del ejemplo del LED
+
+[Ver video del LED controlado con ROS 2](https://drive.google.com/file/d/1F7s_RSn5VcQd6ww2n6IhPIkxh7u9KqnB/view?usp=drive_link)
