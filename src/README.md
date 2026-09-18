@@ -647,3 +647,16 @@ src/
 ```
 
 Esta estructura reemplaza las ubicaciones de las entregas anteriores. Sus explicaciones y enlaces de evidencia se conservan como registro de esas actividades.
+
+
+## Configuración final del control con joystick
+
+Se conservaron los centros medidos: 1835 para el primer eje y 1765 para el segundo.
+
+Se utiliza una zona muerta de ±100 unidades alrededor de cada centro. En la muestra tomada sin tocar el joystick, el primer eje varió aproximadamente entre 1825 y 1840 y el segundo entre 1755 y 1775. El margen elegido cubre esas variaciones y permite mantener la tortuga detenida en posición neutral.
+
+Se conservaron los límites de velocidad lineal de ±1.5 y angular de ±1.5 rad/s, porque durante la prueba permitieron controlar el movimiento de la tortuga de forma manejable.
+
+Fuera de la zona muerta, la velocidad aumenta proporcionalmente hasta el límite de cada eje. Se calcula cada lado por separado porque los centros medidos no coinciden con la mitad del rango de 0 a 4095.
+
+El controlador también envía velocidad cero si deja de recibir lecturas válidas durante más de 0.5 segundos.
