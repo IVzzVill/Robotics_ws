@@ -660,3 +660,267 @@ Se conservaron los límites de velocidad lineal de ±1.5 y angular de ±1.5 rad/
 Fuera de la zona muerta, la velocidad aumenta proporcionalmente hasta el límite de cada eje. Se calcula cada lado por separado porque los centros medidos no coinciden con la mitad del rango de 0 a 4095.
 
 El controlador también envía velocidad cero si deja de recibir lecturas válidas durante más de 0.5 segundos.
+
+
+---
+
+# Control de Turtlesim con joystick y ESP32
+
+## Descripción
+
+Se integró un joystick de dos ejes con una ESP32 y dos nodos de ROS 2 para controlar el movimiento de una tortuga.
+
+La ESP32 obtiene las lecturas analógicas y las envía por serial. El publicador transmite esas lecturas por un tópico de ROS 2. El controlador recibe los valores y los convierte en velocidades lineal y angular.
+
+## Conexiones
+
+Se utilizó la siguiente asignación de pines:
+
+| Joystick | ESP32 |
+|----------|-------|
+| VCC | 3V3 |
+| GND | GND |
+| VRx | GPIO 34 |
+| VRy | GPIO 35 |
+| SW | Sin conectar |
+
+Se eligieron GPIO 34 y GPIO 35 porque son entradas con ADC1. El joystick se alimentó con 3.3 V para mantener sus señales dentro del nivel de alimentación de la ESP32.
+
+## Archivos generados
+
+### joystick.ino
+
+Ubicación:
+
+```text
+src/basics/colmibot_firmware/esp32_basics/joystick/joystick.ino
+```
+
+Configura la resolución del ADC a 12 bits y lee ambos ejes, con valores entre 0 y 4095.
+
+Envía los datos a 115200 baudios con el formato X,Y y un salto de línea. Después espera 50 milisegundos antes de repetir.
+
+### joystick_publisher.py
+
+Ubicación:
+
+```text
+src/basics/basics/joystick_publisher.py
+```
+
+Crea el nodo joystick_publisher y abre /dev/ttyUSB0 a 115200 baudios.
+
+Acumula los bytes recibidos hasta completar una línea. Separa los dos números y descarta líneas inválidas o valores fuera del rango de 12 bits.
+
+Publica las lecturas en /joystick/raw mediante std_msgs/msg/Int32MultiArray:
+
+```text
+data: [lectura_GPIO34, lectura_GPIO35]
+```
+
+Este nodo no envía órdenes a Turtlesim.
+
+### turtle_controller.py
+
+Ubicación:
+
+```text
+src/basics/basics/turtle_controller.py
+```
+
+Crea el nodo turtle_controller y se suscribe a /joystick/raw.
+
+Convierte las lecturas en velocidades y publica mensajes geometry_msgs/msg/Twist en /turtle1/cmd_vel.
+
+Utiliza linear.x para avanzar o retroceder y angular.z para girar. Ambas velocidades se calculan de manera independiente, por lo que pueden actuar simultáneamente.
+
+## Orientación y calibración
+
+Con la orientación física utilizada se obtuvieron estas lecturas aproximadas:
+
+| Posición | GPIO 34 | GPIO 35 |
+|----------|---------|---------|
+| Centro | 1835 | 1765 |
+| Adelante | 0 | 1765 |
+| Atrás | 4095 | 1765 |
+| Izquierda | 1835 | 4095 |
+| Derecha | 1835 | 0 |
+
+Se invirtió el signo del primer eje para que mover el joystick hacia adelante produzca velocidad lineal positiva.
+
+El segundo eje produce giro positivo hacia la izquierda y negativo hacia la derecha.
+
+## Zona muerta y control proporcional
+
+Se conservaron los centros 1835 y 1765 y una zona muerta de ±100 unidades.
+
+Esto corresponde a los intervalos:
+
+- Primer eje: de 1735 a 1935
+- Segundo eje: de 1665 a 1865
+
+Dentro del intervalo correspondiente, la velocidad de ese eje es cero. El margen de 100 unidades equivale aproximadamente al 2.4 % del rango completo del ADC por cada lado.
+
+En reposo se observaron valores aproximados de 1825 a 1840 en el primer eje y de 1755 a 1775 en el segundo. La zona muerta cubre esas variaciones.
+
+Fuera de la zona muerta, se resta ese margen y se escala el recorrido restante hasta el extremo del ADC. Cada lado se calcula por separado porque el centro real no es 2048.
+
+Así, la velocidad aumenta progresivamente desde cero hasta su límite y no funciona como un control de encendido y apagado.
+
+## Límites y detención
+
+Se conservaron los siguientes límites después de las pruebas:
+
+- Velocidad lineal: de -1.5 a 1.5
+- Velocidad angular: de -1.5 a 1.5 rad/s
+
+Estos límites permitieron observar cambios proporcionales y manejar la tortuga durante las pruebas. Es necesario realizar movimientos breves para evitar alcanzar las paredes del simulador.
+
+El controlador publica cada 0.05 segundos. Si pasan más de 0.5 segundos sin recibir una lectura válida, envía velocidades cero.
+
+## Configuración del paquete
+
+Se agregaron estas entradas en console_scripts de src/basics/setup.py, conservando las anteriores:
+
+```python
+'joystick_publisher = basics.joystick_publisher:main',
+'turtle_controller = basics.turtle_controller:main',
+```
+
+Se utilizan rclpy, std_msgs, geometry_msgs y la biblioteca de comunicación serial utilizada en los ejemplos anteriores.
+
+## Compilación y preparación
+
+Se carga joystick.ino en la ESP32 desde Arduino IDE y se cierra el monitor serial antes de ejecutar el publicador.
+
+Desde el workspace:
+
+```bash
+cd ~/robotics_ws
+source /opt/ros/jazzy/setup.bash
+colcon build --packages-select basics
+```
+
+No deben ejecutarse otros programas que utilicen el mismo puerto serial ni otros publicadores de velocidad para la tortuga durante esta prueba.
+
+## Ejecución
+
+### Terminal 1: simulador
+
+```bash
+source /opt/ros/jazzy/setup.bash
+ros2 run turtlesim turtlesim_node
+```
+
+### Terminal 2: controlador
+
+```bash
+cd ~/robotics_ws
+source /opt/ros/jazzy/setup.bash
+source install/setup.bash
+ros2 run basics turtle_controller
+```
+
+### Terminal 3: publicador serial
+
+```bash
+cd ~/robotics_ws
+source /opt/ros/jazzy/setup.bash
+source install/setup.bash
+ros2 run basics joystick_publisher
+```
+
+## Comprobación
+
+En otra terminal:
+
+```bash
+source /opt/ros/jazzy/setup.bash
+ros2 node list
+ros2 node info /joystick_publisher
+ros2 node info /turtle_controller
+ros2 topic info /joystick/raw
+ros2 topic info /turtle1/cmd_vel
+```
+
+Para observar las lecturas del joystick:
+
+```bash
+ros2 topic echo /joystick/raw
+```
+
+Después de detener ese comando con Ctrl+C, se pueden observar las velocidades:
+
+```bash
+ros2 topic echo /turtle1/cmd_vel
+```
+
+Para abrir el grafo:
+
+```bash
+ros2 run rqt_graph rqt_graph
+```
+
+La comunicación esperada es:
+
+```text
+/joystick_publisher
+        ↓
+/joystick/raw
+        ↓
+/turtle_controller
+        ↓
+/turtle1/cmd_vel
+        ↓
+/turtlesim
+```
+
+Para reiniciar la escena se suelta primero el joystick y se ejecuta:
+
+```bash
+ros2 service call /reset std_srvs/srv/Empty "{}"
+```
+
+## Pruebas y problemas encontrados
+
+Se probó el avance, retroceso, giro hacia ambos lados y movimiento combinado. También se comprobó que la velocidad cambia con la inclinación y que la tortuga se detiene al soltar el joystick.
+
+Los centros medidos fueron distintos de 2048. Se utilizaron los valores reales para evitar calcular el movimiento respecto a un centro incorrecto.
+
+Las lecturas variaban ligeramente con el joystick suelto. Se estableció la zona muerta para que esas variaciones no generaran movimiento.
+
+Según la orientación del módulo, el primer eje correspondía a adelante y atrás y el segundo al giro. Se ajustó la conversión a esa orientación sin cambiar los cables.
+
+Durante las pruebas la tortuga alcanzó las paredes y Turtlesim mostró avisos. Se reinició la escena y se realizaron movimientos más breves.
+
+El controlador puede mostrar -0.00 en la velocidad lineal al estar centrado debido a la inversión del signo. Ese valor equivale a cero.
+
+## Control de versiones
+
+Se organizaron seis etapas:
+
+1. Programa de Arduino y comprobación de las lecturas del joystick
+2. Verificación del publicador serial
+3. Verificación de recepción en el suscriptor
+4. Primera versión de envío de velocidades a Turtlesim
+5. Confirmación de límites y zona muerta
+6. Documentación completa y evidencia
+
+## Evidencia en video
+
+[Ver video del joystick controlando Turtlesim](https://drive.google.com/file/d/1V4_MCRjbAE4Etz-Wf2883Qd3GcCYuM1r/view?usp=sharing)
+
+## Archivos agregados al workspace
+
+Se conservaron los archivos de las actividades anteriores y se agregaron:
+
+```text
+src/basics/
+├── basics/
+│   ├── joystick_publisher.py
+│   └── turtle_controller.py
+└── colmibot_firmware/
+    └── esp32_basics/
+        └── joystick/
+            └── joystick.ino
+```
