@@ -1,3 +1,47 @@
+# Paquete basics: descripción general
+
+Alumno: Ivan Vazquez Villar
+
+El paquete basics reúne los ejemplos de comunicación entre nodos de ROS 2, control de Turtlesim y comunicación serial con una ESP32 desarrollados durante las actividades.
+
+## Organización actual
+
+- basics/: contiene los nodos Python de velocidad, LED, potenciómetro y joystick
+- esp32_basics/: contiene los programas de Arduino y los ejemplos de comunicación serial directa
+- launch/: contiene los archivos para iniciar varios nodos con un solo comando
+- package.xml: declara las dependencias del paquete
+- setup.py: registra los ejecutables y los archivos que se instalan
+- setup.cfg y resource/: forman parte de la configuración del paquete
+- test/: conserva las pruebas incluidas en el paquete
+
+## Ejemplos incluidos
+
+- velocity_publisher y velocity_subscriber intercambian mensajes Float32 por /velocity
+- velocity_turtle_pub y velocity_turtle_subs utilizan Twist para el ejemplo de velocidad de la tortuga
+- led_blink y serial_bridge permiten controlar el LED de la ESP32 mediante /led_command
+- analog_serial_pub y analog_subs permiten publicar y recibir lecturas del potenciómetro en /analog
+- joystick_publisher publica las lecturas de dos ejes en /joystick/raw
+- turtle_controller convierte esas lecturas en velocidades para /turtle1/cmd_vel
+
+## Archivos launch
+
+- velocity_system.launch.py inicia el publicador y el suscriptor de velocidad
+- turtle_joy_controller.launch.py inicia Turtlesim, el controlador y el publicador del joystick
+
+## Rutas actuales del firmware
+
+- src/basics/esp32_basics/ADC_Pot/ADC_Pot.ino
+- src/basics/esp32_basics/LED_Serial/LED_Serial.ino
+- src/basics/esp32_basics/joystick/joystick.ino
+- src/basics/esp32_basics/serial_led.py
+- src/basics/esp32_basics/serial_pot.py
+
+El README se encuentra en src/basics/README.md.
+
+Las secciones anteriores de las actividades se conservan como registro histórico, incluidos sus videos. Sus rutas y árboles reflejan la organización que se utilizó en cada entrega. Para la versión actual se utilizan las rutas indicadas en esta descripción general.
+
+---
+
 # Publicador y suscriptor de velocidad en ROS 2
 
 **Alumno:** Ivan Vazquez Villar
@@ -998,3 +1042,103 @@ El launch permitió ejecutar ambos nodos desde una sola terminal y comprobar su 
 ## Evidencia en video
 
 [Ver video de la ejecución con launch](https://drive.google.com/file/d/1kf8mtKcoTKCxSf0hDiybt8Whktv2IIkN/view?usp=sharing)
+
+
+---
+
+# Integración final mediante turtle_joy_controller.launch.py
+
+## Descripción
+
+Se creó un launch para iniciar los tres nodos del sistema de control con joystick mediante un solo comando.
+
+El launch inicia los procesos y muestra sus salidas en la terminal. La comunicación entre nodos continúa realizándose mediante tópicos.
+
+## Funcionamiento
+
+1. joystick_publisher recibe por serial las lecturas de la ESP32 y las publica en /joystick/raw como std_msgs/msg/Int32MultiArray
+2. turtle_controller recibe las lecturas, aplica los centros, la zona muerta y los límites, y publica geometry_msgs/msg/Twist en /turtle1/cmd_vel
+3. turtlesim recibe las velocidades y mueve la tortuga
+
+El publicador del joystick no envía órdenes directamente a Turtlesim.
+
+## Configuración
+
+El archivo se encuentra en src/basics/launch/turtle_joy_controller.launch.py.
+
+Se registraron ambos launch dentro de data_files en setup.py. Se agregaron turtlesim y python3-serial como dependencias de ejecución en package.xml, conservando launch y launch_ros.
+
+Se trasladó el README a src/basics y se reunieron los programas de la ESP32 en src/basics/esp32_basics. Se conservaron los nodos, los dos launch y las evidencias anteriores.
+
+## Preparación y compilación
+
+La ESP32 debe tener cargado joystick.ino y estar conectada al puerto configurado, /dev/ttyUSB0.
+
+Se cierra el monitor serial y cualquier programa que esté utilizando el puerto. También se detienen copias anteriores de los nodos del sistema.
+
+Desde la terminal se ejecutan estos comandos en orden:
+
+    cd ~/robotics_ws
+    source /opt/ros/jazzy/setup.bash
+    colcon build --packages-select basics
+    source install/setup.bash
+
+## Ejecución
+
+Se inicia todo el sistema con:
+
+    ros2 launch basics turtle_joy_controller.launch.py
+
+Deben iniciarse turtlesim_node, turtle_controller y joystick_publisher.
+
+Al mover el joystick, la tortuga avanza, retrocede y gira. Al soltarlo, la zona muerta mantiene las velocidades en cero.
+
+## Comprobación
+
+En otra terminal se ejecuta:
+
+    source /opt/ros/jazzy/setup.bash
+    ros2 node list
+    ros2 node info /turtle_controller
+    ros2 topic info /joystick/raw
+    ros2 topic info /turtle1/cmd_vel
+
+Los nodos esperados son /joystick_publisher, /turtle_controller y /turtlesim.
+
+Con únicamente esos nodos activos, cada uno de los dos tópicos tiene un publicador y un suscriptor.
+
+Para observar las velocidades se ejecuta:
+
+    ros2 topic echo /turtle1/cmd_vel
+
+Se mueve el joystick para comprobar los cambios de linear.x y angular.z. Después se detiene echo con Ctrl+C y se abre el grafo:
+
+    ros2 run rqt_graph rqt_graph
+
+El grafo muestra esta comunicación:
+
+    /joystick_publisher → /joystick/raw → /turtle_controller
+    /turtle_controller → /turtle1/cmd_vel → /turtlesim
+
+## Problema encontrado
+
+En el primer intento el publicador no pudo abrir /dev/ttyUSB0 porque el puerto no estaba disponible. La compilación había terminado correctamente y los otros dos procesos sí iniciaron.
+
+Se revisó la conexión de la ESP32 y la disponibilidad del puerto. Después se volvió a ejecutar el launch y se recibieron las lecturas correctamente.
+
+El puerto se puede comprobar con:
+
+    ls -l /dev/ttyUSB* /dev/ttyACM* 2>/dev/null
+
+## Resultado
+
+Se comprobó que el launch inicia el sistema desde una sola terminal y que la tortuga responde al joystick. También se verificaron los nodos, los tópicos y sus conexiones mediante el grafo de ROS.
+
+## Evidencia en video
+
+[Ver video de la integración con launch](https://drive.google.com/file/d/1uFpuQ0Rokv2Qp6WF__dg9Rt1VSwW-Owc/view?usp=drive_link)
+
+## Control de versiones
+
+- Commit inicial con el launch funcionando
+- Commit final con la documentación y la reestructura del paquete basics
