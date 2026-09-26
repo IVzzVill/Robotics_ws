@@ -11,7 +11,10 @@ setup(
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
         ('share/' + package_name + '/launch',
-            ['launch/velocity_system.launch.py']),
+            [
+                'launch/velocity_system.launch.py',
+                'launch/turtle_joy_controller.launch.py',
+            ]),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
