@@ -924,3 +924,77 @@ src/basics/
         └── joystick/
             └── joystick.ino
 ```
+
+
+---
+
+# Ejecución de nodos mediante un archivo launch
+
+## Descripción
+
+En esta actividad se creó velocity_system.launch.py para iniciar los nodos velocity_publisher y velocity_subscriber mediante un solo comando, siguiendo el ejemplo de la presentación de clase.
+
+Los dos nodos se ejecutan como procesos separados y muestran sus mensajes en la misma terminal.
+
+## Funcionamiento y configuración
+
+El archivo se encuentra en:
+
+```text
+src/basics/launch/velocity_system.launch.py
+```
+
+La función generate_launch_description devuelve una LaunchDescription con dos acciones Node. Cada acción indica el paquete basics, el ejecutable correspondiente y output='screen' para mostrar su salida en la terminal.
+
+El publicador envía mensajes std_msgs/msg/Float32 por /velocity cada 0.5 segundos. El suscriptor recibe los datos y muestra la velocidad.
+
+Se agregó el archivo launch a data_files en setup.py para instalarlo dentro de share/basics/launch. También se declararon launch y launch_ros como dependencias de ejecución en package.xml.
+
+## Compilación y ejecución
+
+```bash
+cd ~/robotics_ws
+source /opt/ros/jazzy/setup.bash
+colcon build --packages-select basics
+source install/setup.bash
+ros2 launch basics velocity_system.launch.py
+```
+
+No se deben iniciar copias adicionales de los mismos nodos durante esta comprobación.
+
+## Comprobación
+
+Con el launch ejecutándose, en otra terminal:
+
+```bash
+source /opt/ros/jazzy/setup.bash
+ros2 node list
+ros2 node info /velocity_publisher
+ros2 node info /velocity_subscriber
+ros2 topic info /velocity
+ros2 topic echo /velocity
+```
+
+Se comprobó la presencia de ambos nodos y del tópico /velocity con mensajes Float32. Antes de iniciar echo, el tópico tenía un publicador y un suscriptor.
+
+Los valores publicados coincidieron con los recibidos. También se observó que la secuencia llegaba a 1.5 y regresaba a 0.0.
+
+Después de detener echo con Ctrl+C, se abrió el grafo:
+
+```bash
+ros2 run rqt_graph rqt_graph
+```
+
+La conexión observada fue:
+
+```text
+/velocity_publisher → /velocity → /velocity_subscriber
+```
+
+## Resultado
+
+El launch permitió ejecutar ambos nodos desde una sola terminal y comprobar su comunicación sin modificar los programas originales.
+
+## Evidencia en video
+
+[Ver video de la ejecución con launch](https://drive.google.com/file/d/1kf8mtKcoTKCxSf0hDiybt8Whktv2IIkN/view?usp=sharing)
